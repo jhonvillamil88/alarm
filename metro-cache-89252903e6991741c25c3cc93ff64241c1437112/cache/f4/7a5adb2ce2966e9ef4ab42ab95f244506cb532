@@ -1,0 +1,222 @@
+__d(function (global, require, module, exports, _dependencyMap) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+  var _reactNative = require(_dependencyMap[0], "react-native");
+
+  var _lodash = require(_dependencyMap[1], "lodash");
+
+  var _lodash2 = _interopRequireDefault(_lodash);
+
+  var _async = require(_dependencyMap[2], "async");
+
+  var _async2 = _interopRequireDefault(_async);
+
+  var _eventemitter = require(_dependencyMap[3], "eventemitter3");
+
+  var _eventemitter2 = _interopRequireDefault(_eventemitter);
+
+  var _MediaStates = require(_dependencyMap[4], "./MediaStates");
+
+  var _MediaStates2 = _interopRequireDefault(_MediaStates);
+
+  function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+  function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+  function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+  function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+  var RCTAudioRecorder = _reactNative.NativeModules.AudioRecorder;
+  var recorderId = 0;
+  var defaultRecorderOptions = {
+    autoDestroy: true
+  };
+
+  var Recorder = function (_EventEmitter) {
+    _inherits(Recorder, _EventEmitter);
+
+    function Recorder(path) {
+      var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : defaultRecorderOptions;
+
+      _classCallCheck(this, Recorder);
+
+      var _this = _possibleConstructorReturn(this, (Recorder.__proto__ || Object.getPrototypeOf(Recorder)).call(this));
+
+      _this._path = path;
+      _this._options = options;
+      _this._recorderId = recorderId++;
+
+      _this._reset();
+
+      var appEventEmitter = _reactNative.Platform.OS === 'ios' ? _reactNative.NativeAppEventEmitter : _reactNative.DeviceEventEmitter;
+      appEventEmitter.addListener('RCTAudioRecorderEvent:' + _this._recorderId, function (payload) {
+        _this._handleEvent(payload.event, payload.data);
+      });
+      return _this;
+    }
+
+    _createClass(Recorder, [{
+      key: "_reset",
+      value: function _reset() {
+        this._state = _MediaStates2.default.IDLE;
+        this._duration = -1;
+        this._position = -1;
+        this._lastSync = -1;
+      }
+    }, {
+      key: "_updateState",
+      value: function _updateState(err, state) {
+        this._state = err ? _MediaStates2.default.ERROR : state;
+      }
+    }, {
+      key: "_handleEvent",
+      value: function _handleEvent(event, data) {
+        switch (event) {
+          case 'ended':
+            this._state = Math.min(this._state, _MediaStates2.default.PREPARED);
+            break;
+
+          case 'info':
+            break;
+
+          case 'error':
+            this._reset();
+
+            break;
+        }
+
+        this.emit(event, data);
+      }
+    }, {
+      key: "prepare",
+      value: function prepare() {
+        var _this2 = this;
+
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+
+        this._updateState(null, _MediaStates2.default.PREPARING);
+
+        RCTAudioRecorder.prepare(this._recorderId, this._path, this._options, function (err, fsPath) {
+          _this2._fsPath = fsPath;
+
+          _this2._updateState(err, _MediaStates2.default.PREPARED);
+
+          callback(err, fsPath);
+        });
+        return this;
+      }
+    }, {
+      key: "record",
+      value: function record() {
+        var _this3 = this;
+
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+        var tasks = [];
+
+        if (this._state === _MediaStates2.default.IDLE) {
+          tasks.push(function (next) {
+            _this3.prepare(next);
+          });
+        }
+
+        tasks.push(function (next) {
+          RCTAudioRecorder.record(_this3._recorderId, next);
+        });
+
+        _async2.default.series(tasks, function (err) {
+          _this3._updateState(err, _MediaStates2.default.RECORDING);
+
+          callback(err);
+        });
+
+        return this;
+      }
+    }, {
+      key: "stop",
+      value: function stop() {
+        var _this4 = this;
+
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+
+        if (this._state >= _MediaStates2.default.RECORDING) {
+          RCTAudioRecorder.stop(this._recorderId, function (err) {
+            _this4._updateState(err, _MediaStates2.default.DESTROYED);
+
+            callback(err);
+          });
+        } else {
+          setTimeout(callback, 0);
+        }
+
+        return this;
+      }
+    }, {
+      key: "toggleRecord",
+      value: function toggleRecord() {
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+
+        if (this._state === _MediaStates2.default.RECORDING) {
+          this.stop(function (err) {
+            callback(err, true);
+          });
+        } else {
+          this.record(function (err) {
+            callback(err, false);
+          });
+        }
+
+        return this;
+      }
+    }, {
+      key: "destroy",
+      value: function destroy() {
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+
+        this._reset();
+
+        RCTAudioRecorder.destroy(this._recorderId, callback);
+      }
+    }, {
+      key: "state",
+      get: function get() {
+        return this._state;
+      }
+    }, {
+      key: "canRecord",
+      get: function get() {
+        return this._state >= _MediaStates2.default.PREPARED;
+      }
+    }, {
+      key: "canPrepare",
+      get: function get() {
+        return this._state == _MediaStates2.default.IDLE;
+      }
+    }, {
+      key: "isRecording",
+      get: function get() {
+        return this._state == _MediaStates2.default.RECORDING;
+      }
+    }, {
+      key: "isPrepared",
+      get: function get() {
+        return this._state == _MediaStates2.default.PREPARED;
+      }
+    }, {
+      key: "fsPath",
+      get: function get() {
+        return this._fsPath;
+      }
+    }]);
+
+    return Recorder;
+  }(_eventemitter2.default);
+
+  exports.default = Recorder;
+});

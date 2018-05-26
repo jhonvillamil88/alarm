@@ -1,0 +1,437 @@
+__d(function (global, require, module, exports, _dependencyMap) {
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var _react2 = require(_dependencyMap[0], "react");
+
+  var _react3 = _interopRequireDefault(_react2);
+
+  var _index = require(_dependencyMap[1], "./node_modules/react-transform-hmr/lib/index.js");
+
+  var _index2 = _interopRequireDefault(_index);
+
+  var _jsxFileName = "/windows/project_nodejs/alarm/App.js";
+
+  var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+  var _reactNative = require(_dependencyMap[2], "react-native");
+
+  var _reactNativeElements = require(_dependencyMap[3], "react-native-elements");
+
+  var _reactNativeDatepicker = require(_dependencyMap[4], "react-native-datepicker");
+
+  var _reactNativeDatepicker2 = _interopRequireDefault(_reactNativeDatepicker);
+
+  var _reactNativeAudioToolkit = require(_dependencyMap[5], "react-native-audio-toolkit");
+
+  var _reactNativeSoundPlayer = require(_dependencyMap[6], "react-native-sound-player");
+
+  var _reactNativeSoundPlayer2 = _interopRequireDefault(_reactNativeSoundPlayer);
+
+  function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+  function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+  function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+  function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+  var _components = {
+    App: {
+      displayName: "App"
+    }
+  };
+
+  var _node_modulesReactTransformHmrLibIndexJs2 = (0, _index2.default)({
+    filename: "/windows/project_nodejs/alarm/App.js",
+    components: _components,
+    locals: [module],
+    imports: [_react3.default]
+  });
+
+  function _wrapComponent(id) {
+    return function (Component) {
+      return _node_modulesReactTransformHmrLibIndexJs2(Component, id);
+    };
+  }
+
+  var App = _wrapComponent("App")(function (_React$Component) {
+    _inherits(App, _React$Component);
+
+    function App() {
+      var _ref;
+
+      var _temp, _this2, _ret;
+
+      _classCallCheck(this, App);
+
+      for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+
+      return _ret = (_temp = (_this2 = _possibleConstructorReturn(this, (_ref = App.__proto__ || Object.getPrototypeOf(App)).call.apply(_ref, [this].concat(args))), _this2), _this2.state = {
+        monday: false,
+        tuesday: false,
+        wednesday: false,
+        thursday: false,
+        friday: false,
+        saturday: false,
+        sunday: false,
+        date: ""
+      }, _this2.validateTime = function () {
+        console.log("comienza la verificacion de dia y hora");
+        var _this = _this2;
+        var interval = setInterval(function () {
+          var date = new Date();
+          var day = date.getDay();
+
+          var time = _this.format_time(date);
+
+          var weekDay = _this.getDayText(day);
+
+          if (_this.state[weekDay]) {
+            console.log("Dia valido, se validara hora");
+            if (!_this.state.date) return;
+
+            if (Date.parse('01/01/2011 ' + time) >= Date.parse('01/01/2011 ' + _this.state.date)) {
+              console.log("Ejecutar alarma");
+
+              _this.vibrateStart();
+
+              _this.soundStart();
+
+              _reactNative.Alert.alert('Alerta del sistema', 'Se cumplio el alarma, Es hora de levantarse', [{
+                text: 'OK'
+              }], {
+                cancelable: false
+              });
+
+              clearInterval(interval);
+            }
+          }
+        }, 1000);
+      }, _temp), _possibleConstructorReturn(_this2, _ret);
+    }
+
+    _createClass(App, [{
+      key: "componentWillMount",
+      value: function componentWillMount() {
+        _reactNative.Alert.alert('Alerta del sistema', 'Alarma activada', [{
+          text: 'OK',
+          onPress: this.validateTime
+        }], {
+          cancelable: false
+        });
+
+        return {
+          data: []
+        };
+      }
+    }, {
+      key: "vibrateStart",
+      value: function vibrateStart() {
+        console.log("Vibrar");
+        var DURATION = 10000;
+        var PATTERN = [1000, 2000, 3000, 4000];
+
+        _reactNative.Vibration.vibrate(DURATION);
+      }
+    }, {
+      key: "soundStart",
+      value: function soundStart() {
+        console.log("Sonar");
+
+        try {
+          _reactNativeSoundPlayer2.default.playSoundFile('./src/resources/alarma.mp3', 'mp3');
+        } catch (e) {
+          console.log("cannot play the sound file", e);
+        }
+      }
+    }, {
+      key: "format_time",
+      value: function format_time(date_obj) {
+        var hour = date_obj.getHours();
+        var minute = date_obj.getMinutes();
+        var amPM = hour > 11 ? "pm" : "am";
+
+        if (hour > 12) {
+          hour -= 12;
+        } else if (hour == 0) {
+          hour = "12";
+        }
+
+        if (hour < 10) {
+          hour = "0" + hour;
+        }
+
+        if (minute < 10) {
+          minute = "0" + minute;
+        }
+
+        return hour + ":" + minute + " " + amPM;
+      }
+    }, {
+      key: "getDayText",
+      value: function getDayText(dayNumber) {
+        switch (dayNumber) {
+          case 0:
+            return "sunday";
+            break;
+
+          case 1:
+            return "monday";
+            break;
+
+          case 2:
+            return "tuesday";
+            break;
+
+          case 3:
+            return "wednesday";
+            break;
+
+          case 4:
+            return "thursday";
+            break;
+
+          case 5:
+            return "friday";
+            break;
+
+          case 6:
+            return "saturday";
+            break;
+        }
+      }
+    }, {
+      key: "render",
+      value: function render() {
+        var _this3 = this;
+
+        return _react3.default.createElement(
+          _reactNative.View,
+          {
+            style: styles.container,
+            __source: {
+              fileName: _jsxFileName,
+              lineNumber: 183
+            }
+          },
+          _react3.default.createElement(
+            _reactNative.Text,
+            {
+              __source: {
+                fileName: _jsxFileName,
+                lineNumber: 184
+              }
+            },
+            "Alarma"
+          ),
+          _react3.default.createElement(
+            _reactNative.Text,
+            {
+              __source: {
+                fileName: _jsxFileName,
+                lineNumber: 185
+              }
+            },
+            "Selecciona los dias y la hora que requieres te despierte."
+          ),
+          _react3.default.createElement(
+            _reactNative.View,
+            {
+              style: styles.viewMain,
+              __source: {
+                fileName: _jsxFileName,
+                lineNumber: 186
+              }
+            },
+            _react3.default.createElement(
+              _reactNative.View,
+              {
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 187
+                }
+              },
+              _react3.default.createElement(
+                _reactNative.Text,
+                {
+                  __source: {
+                    fileName: _jsxFileName,
+                    lineNumber: 188
+                  }
+                },
+                "Dias"
+              ),
+              _react3.default.createElement(_reactNativeElements.CheckBox, {
+                title: "Lunes",
+                checked: this.state.monday,
+                onPress: function onPress() {
+                  return _this3.setState({
+                    monday: !_this3.state.monday
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 189
+                }
+              }),
+              _react3.default.createElement(_reactNativeElements.CheckBox, {
+                title: "Martes",
+                checked: this.state.tuesday,
+                onPress: function onPress() {
+                  return _this3.setState({
+                    tuesday: !_this3.state.tuesday
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 194
+                }
+              }),
+              _react3.default.createElement(_reactNativeElements.CheckBox, {
+                title: "Miercoles",
+                checked: this.state.wendesday,
+                onPress: function onPress() {
+                  return _this3.setState({
+                    wendesday: !_this3.state.wendesday
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 199
+                }
+              }),
+              _react3.default.createElement(_reactNativeElements.CheckBox, {
+                title: "Jueves",
+                checked: this.state.thursday,
+                onPress: function onPress() {
+                  return _this3.setState({
+                    thursday: !_this3.state.thursday
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 204
+                }
+              }),
+              _react3.default.createElement(_reactNativeElements.CheckBox, {
+                title: "Viernes",
+                checked: this.state.friday,
+                onPress: function onPress() {
+                  return _this3.setState({
+                    friday: !_this3.state.friday
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 209
+                }
+              }),
+              _react3.default.createElement(_reactNativeElements.CheckBox, {
+                title: "Sabado",
+                checked: this.state.saturday,
+                onPress: function onPress() {
+                  return _this3.setState({
+                    saturday: !_this3.state.saturday
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 214
+                }
+              }),
+              _react3.default.createElement(_reactNativeElements.CheckBox, {
+                title: "Domingo",
+                checked: this.state.sunday,
+                onPress: function onPress() {
+                  return _this3.setState({
+                    sunday: !_this3.state.sunday
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 219
+                }
+              })
+            ),
+            _react3.default.createElement(
+              _reactNative.View,
+              {
+                style: styles.container,
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 225
+                }
+              },
+              _react3.default.createElement(
+                _reactNative.Text,
+                {
+                  __source: {
+                    fileName: _jsxFileName,
+                    lineNumber: 226
+                  }
+                },
+                "Hora"
+              ),
+              _react3.default.createElement(_reactNativeDatepicker2.default, {
+                style: {
+                  width: 200
+                },
+                date: this.state.date,
+                mode: "time",
+                placeholder: "Seleccione la hora",
+                format: "h:mm a",
+                minDate: "2016-05-01",
+                maxDate: "2016-06-01",
+                confirmBtnText: "Confirm",
+                cancelBtnText: "Cancel",
+                customStyles: {
+                  dateIcon: {
+                    position: 'absolute',
+                    left: 0,
+                    top: 4,
+                    marginLeft: 0
+                  },
+                  dateInput: {
+                    marginLeft: 36
+                  }
+                },
+                onDateChange: function onDateChange(date) {
+                  _this3.setState({
+                    date: date
+                  });
+                },
+                __source: {
+                  fileName: _jsxFileName,
+                  lineNumber: 227
+                }
+              })
+            )
+          )
+        );
+      }
+    }]);
+
+    return App;
+  }(_react3.default.Component));
+
+  exports.default = App;
+
+  var styles = _reactNative.StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#fff',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: '8%'
+    },
+    viewMain: {
+      flexDirection: 'row',
+      flex: 1,
+      alignItems: 'center'
+    }
+  });
+});

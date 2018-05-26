@@ -1,0 +1,31 @@
+__d(function (global, require, module, exports, _dependencyMap) {
+  'use strict';
+
+  var _reactNative = require(_dependencyMap[0], "react-native");
+
+  var RNSoundPlayer = _reactNative.NativeModules.RNSoundPlayer;
+
+  var _soundPlayerEmitter = new _reactNative.NativeEventEmitter(RNSoundPlayer);
+
+  var _finishedPlayingListener = null;
+  module.exports = {
+    playSoundFile: function playSoundFile(name, type) {
+      RNSoundPlayer.playSoundFile(name, type);
+    },
+    onFinishedPlaying: function onFinishedPlaying(callback) {
+      _finishedPlayingListener = _soundPlayerEmitter.addListener('FinishedPlaying', callback);
+    },
+    pause: function pause() {
+      RNSoundPlayer.pause();
+    },
+    resume: function resume() {
+      RNSoundPlayer.resume();
+    },
+    stop: function stop() {
+      RNSoundPlayer.stop();
+    },
+    unmount: function unmount() {
+      _finishedPlayingListener && _finishedPlayingListener.remove();
+    }
+  };
+});

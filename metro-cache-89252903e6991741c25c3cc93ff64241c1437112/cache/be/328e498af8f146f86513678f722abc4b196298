@@ -1,0 +1,383 @@
+__d(function (global, require, module, exports, _dependencyMap) {
+  'use strict';
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+
+  var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+  var _reactNative = require(_dependencyMap[0], "react-native");
+
+  var _lodash = require(_dependencyMap[1], "lodash");
+
+  var _lodash2 = _interopRequireDefault(_lodash);
+
+  var _async = require(_dependencyMap[2], "async");
+
+  var _async2 = _interopRequireDefault(_async);
+
+  var _eventemitter = require(_dependencyMap[3], "eventemitter3");
+
+  var _eventemitter2 = _interopRequireDefault(_eventemitter);
+
+  var _MediaStates = require(_dependencyMap[4], "./MediaStates");
+
+  var _MediaStates2 = _interopRequireDefault(_MediaStates);
+
+  function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+  function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+  function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+  function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+  var RCTAudioPlayer = _reactNative.NativeModules.AudioPlayer;
+  var playerId = 0;
+  var defaultPlayerOptions = {
+    autoDestroy: true,
+    continuesToPlayInBackground: false
+  };
+
+  var Player = function (_EventEmitter) {
+    _inherits(Player, _EventEmitter);
+
+    function Player(path) {
+      var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : defaultPlayerOptions;
+
+      _classCallCheck(this, Player);
+
+      var _this = _possibleConstructorReturn(this, (Player.__proto__ || Object.getPrototypeOf(Player)).call(this));
+
+      _this._path = path;
+      _this._options = options;
+      _this._playerId = playerId++;
+
+      _this._reset();
+
+      var appEventEmitter = _reactNative.Platform.OS === 'ios' ? _reactNative.NativeAppEventEmitter : _reactNative.DeviceEventEmitter;
+      appEventEmitter.addListener('RCTAudioPlayerEvent:' + _this._playerId, function (payload) {
+        _this._handleEvent(payload.event, payload.data);
+      });
+      return _this;
+    }
+
+    _createClass(Player, [{
+      key: "_reset",
+      value: function _reset() {
+        this._state = _MediaStates2.default.IDLE;
+        this._volume = 1.0;
+        this._pan = 0.0;
+        this._wakeLock = false;
+        this._duration = -1;
+        this._position = -1;
+        this._lastSync = -1;
+        this._looping = false;
+      }
+    }, {
+      key: "_storeInfo",
+      value: function _storeInfo(info) {
+        if (!info) {
+          return;
+        }
+
+        this._duration = info.duration;
+        this._position = info.position;
+        this._lastSync = Date.now();
+      }
+    }, {
+      key: "_updateState",
+      value: function _updateState(err, state, results) {
+        this._state = err ? _MediaStates2.default.ERROR : state;
+
+        if (err || !results) {
+          return;
+        }
+
+        var info = _lodash2.default.last(_lodash2.default.filter(results, _lodash2.default.identity));
+
+        this._storeInfo(info);
+      }
+    }, {
+      key: "_handleEvent",
+      value: function _handleEvent(event, data) {
+        switch (event) {
+          case 'progress':
+            break;
+
+          case 'ended':
+            this._updateState(null, _MediaStates2.default.PREPARED);
+
+            this._position = -1;
+            break;
+
+          case 'info':
+            break;
+
+          case 'error':
+            this._state = _MediaStates2.default.ERROR;
+            break;
+
+          case 'pause':
+            this._state = _MediaStates2.default.PAUSED;
+
+            this._storeInfo(data.info);
+
+            break;
+
+          case 'forcePause':
+            this.pause();
+            break;
+
+          case 'looped':
+            this._position = 0;
+            this._lastSync = Date.now();
+            break;
+        }
+
+        this.emit(event, data);
+      }
+    }, {
+      key: "prepare",
+      value: function prepare() {
+        var _this2 = this;
+
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+
+        this._updateState(null, _MediaStates2.default.PREPARING);
+
+        var tasks = [];
+        tasks.push(function (next) {
+          RCTAudioPlayer.prepare(_this2._playerId, _this2._path, _this2._options, next);
+        });
+        tasks.push(function (next) {
+          RCTAudioPlayer.set(_this2._playerId, {
+            volume: _this2._volume,
+            pan: _this2._pan,
+            wakeLock: _this2._wakeLock,
+            looping: _this2._looping
+          }, next);
+        });
+
+        _async2.default.series(tasks, function (err, results) {
+          _this2._updateState(err, _MediaStates2.default.PREPARED, results);
+
+          callback(err);
+        });
+
+        return this;
+      }
+    }, {
+      key: "play",
+      value: function play() {
+        var _this3 = this;
+
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+        var tasks = [];
+
+        if (this._state === _MediaStates2.default.IDLE) {
+          tasks.push(function (next) {
+            _this3.prepare(next);
+          });
+        }
+
+        tasks.push(function (next) {
+          RCTAudioPlayer.play(_this3._playerId, next);
+        });
+
+        _async2.default.series(tasks, function (err, results) {
+          _this3._updateState(err, _MediaStates2.default.PLAYING, results);
+
+          callback(err);
+        });
+
+        return this;
+      }
+    }, {
+      key: "pause",
+      value: function pause() {
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+        RCTAudioPlayer.pause(this._playerId, function (err, results) {
+          callback(err);
+        });
+        return this;
+      }
+    }, {
+      key: "playPause",
+      value: function playPause() {
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+
+        if (this._state === _MediaStates2.default.PLAYING) {
+          this.pause(function (err) {
+            callback(err, true);
+          });
+        } else {
+          this.play(function (err) {
+            callback(err, false);
+          });
+        }
+
+        return this;
+      }
+    }, {
+      key: "stop",
+      value: function stop() {
+        var _this4 = this;
+
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+        RCTAudioPlayer.stop(this._playerId, function (err, results) {
+          _this4._updateState(err, _MediaStates2.default.PREPARED);
+
+          _this4._position = -1;
+          callback(err);
+        });
+        return this;
+      }
+    }, {
+      key: "destroy",
+      value: function destroy() {
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : _lodash2.default.noop;
+
+        this._reset();
+
+        RCTAudioPlayer.destroy(this._playerId, callback);
+      }
+    }, {
+      key: "seek",
+      value: function seek() {
+        var _this5 = this;
+
+        var position = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
+        var callback = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : _lodash2.default.noop;
+
+        if (this._state != _MediaStates2.default.SEEKING) {
+          this._preSeekState = this._state;
+        }
+
+        this._updateState(null, _MediaStates2.default.SEEKING);
+
+        RCTAudioPlayer.seek(this._playerId, position, function (err, results) {
+          if (err && err.err === 'seekfail') {
+            return;
+          }
+
+          _this5._updateState(err, _this5._preSeekState, [results]);
+
+          callback(err);
+        });
+      }
+    }, {
+      key: "_setIfInitialized",
+      value: function _setIfInitialized(options) {
+        var callback = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : _lodash2.default.noop;
+
+        if (this._state >= _MediaStates2.default.PREPARED) {
+          RCTAudioPlayer.set(this._playerId, options, callback);
+        }
+      }
+    }, {
+      key: "volume",
+      set: function set(value) {
+        this._volume = value;
+
+        this._setIfInitialized({
+          'volume': value
+        });
+      },
+      get: function get() {
+        return this._volume;
+      }
+    }, {
+      key: "currentTime",
+      set: function set(value) {
+        this.seek(value);
+      },
+      get: function get() {
+        var pos = -1;
+
+        if (this._position < 0) {
+          return -1;
+        }
+
+        if (this._state === _MediaStates2.default.PLAYING) {
+          pos = this._position + (Date.now() - this._lastSync);
+          pos = Math.min(pos, this._duration);
+          return pos;
+        } else {
+          return this._position;
+        }
+      }
+    }, {
+      key: "wakeLock",
+      set: function set(value) {
+        this._wakeLock = value;
+
+        this._setIfInitialized({
+          'wakeLock': value
+        });
+      }
+    }, {
+      key: "looping",
+      set: function set(value) {
+        this._looping = value;
+
+        this._setIfInitialized({
+          'looping': value
+        });
+      },
+      get: function get() {
+        return this._looping;
+      }
+    }, {
+      key: "duration",
+      get: function get() {
+        return this._duration;
+      }
+    }, {
+      key: "state",
+      get: function get() {
+        return this._state;
+      }
+    }, {
+      key: "canPlay",
+      get: function get() {
+        return this._state >= _MediaStates2.default.PREPARED;
+      }
+    }, {
+      key: "canStop",
+      get: function get() {
+        return this._state >= _MediaStates2.default.PLAYING;
+      }
+    }, {
+      key: "canPrepare",
+      get: function get() {
+        return this._state == _MediaStates2.default.IDLE;
+      }
+    }, {
+      key: "isPlaying",
+      get: function get() {
+        return this._state == _MediaStates2.default.PLAYING;
+      }
+    }, {
+      key: "isStopped",
+      get: function get() {
+        return this._state <= _MediaStates2.default.PREPARED;
+      }
+    }, {
+      key: "isPaused",
+      get: function get() {
+        return this._state == _MediaStates2.default.PAUSED;
+      }
+    }, {
+      key: "isPrepared",
+      get: function get() {
+        return this._state == _MediaStates2.default.PREPARED;
+      }
+    }]);
+
+    return Player;
+  }(_eventemitter2.default);
+
+  exports.default = Player;
+});
